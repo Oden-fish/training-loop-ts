@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { slugify, truncate } from "../src/text";
+import { parseDuration, slugify, truncate } from "../src/text";
 
 describe("slugify", () => {
   it("空白と記号をハイフンにする", () => {
@@ -40,5 +40,45 @@ describe("truncate", () => {
   });
   it("上限が負数なら RangeError を投げる", () => {
     expect(() => truncate("abc", -1)).toThrow(RangeError);
+  });
+});
+
+describe("parseDuration", () => {
+  it("時間のみをパースできる", () => {
+    expect(parseDuration("1h")).toEqual({ ok: true, value: 3600 });
+  });
+  it("分のみをパースできる", () => {
+    expect(parseDuration("30m")).toEqual({ ok: true, value: 1800 });
+  });
+  it("秒のみをパースできる", () => {
+    expect(parseDuration("45s")).toEqual({ ok: true, value: 45 });
+  });
+  it("時分の組み合わせをパースできる", () => {
+    expect(parseDuration("1h30m")).toEqual({ ok: true, value: 5400 });
+  });
+  it("時分秒の組み合わせをパースできる", () => {
+    expect(parseDuration("2h5m10s")).toEqual({ ok: true, value: 7510 });
+  });
+  it("空文字で ok: false を返す", () => {
+    const result = parseDuration("");
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBeTypeOf("string");
+    }
+  });
+  it("アルファベットだけの入力で ok: false を返す", () => {
+    const result = parseDuration("abc");
+    expect(result.ok).toBe(false);
+  });
+  it("不明な単位で ok: false を返す", () => {
+    const result = parseDuration("1x");
+    expect(result.ok).toBe(false);
+  });
+  it("負の数で ok: false を返す", () => {
+    const result = parseDuration("-5m");
+    expect(result.ok).toBe(false);
+  });
+  it("0s は ok: true で 0 を返す", () => {
+    expect(parseDuration("0s")).toEqual({ ok: true, value: 0 });
   });
 });
