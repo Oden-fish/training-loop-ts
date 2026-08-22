@@ -63,8 +63,6 @@
       "Edit(.claude/agent-memory/**)"
     ],
     "ask": [
-      // "Bash(gh pr merge *)",
-      // "Bash(gh issue close *)",
       "Bash(git merge *)"
     ],
     "deny": [
