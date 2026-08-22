@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { slugify, truncate } from "../src/text";
+import { groupBy, slugify, truncate } from "../src/text";
 
 describe("slugify", () => {
   it("空白と記号をハイフンにする", () => {
@@ -16,6 +16,42 @@ describe("slugify", () => {
   });
   it("非 ASCII 混在でも ASCII 部分が空ならエラーを投げる", () => {
     expect(() => slugify("日本語！＃")).toThrow(Error);
+  });
+});
+
+describe("groupBy", () => {
+  it("キー関数でグループ化する", () => {
+    const result = groupBy(["apple", "avocado", "banana"], (s) => s[0]!);
+    expect(result).toEqual({
+      a: ["apple", "avocado"],
+      b: ["banana"],
+    });
+  });
+  it("空配列で空オブジェクトを返す", () => {
+    expect(groupBy([], () => "key")).toEqual({});
+  });
+  it("グループ内の要素が元の順序を保つ", () => {
+    const items = [
+      { name: "c", group: "x" },
+      { name: "a", group: "y" },
+      { name: "b", group: "x" },
+    ];
+    const result = groupBy(items, (i) => i.group);
+    expect(result).toEqual({
+      x: [
+        { name: "c", group: "x" },
+        { name: "b", group: "x" },
+      ],
+      y: [{ name: "a", group: "y" }],
+    });
+  });
+  it("全要素が同じキーなら 1 グループにまとまる", () => {
+    const result = groupBy([1, 2, 3], () => "all");
+    expect(result).toEqual({ all: [1, 2, 3] });
+  });
+  it("各要素が異なるキーなら要素ごとに 1 つのグループになる", () => {
+    const result = groupBy([1, 2, 3], (n) => String(n));
+    expect(result).toEqual({ "1": [1], "2": [2], "3": [3] });
   });
 });
 
