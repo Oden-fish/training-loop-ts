@@ -40,8 +40,7 @@ export async function run(
   }
 }
 
-/* v8 ignore start -- エントリーポイント。テストは run() を直接呼ぶ */
+// エントリーポイント。テストは run() を直接呼ぶので、import 時には走らせない。
 if (import.meta.filename === process.argv[1]) {
   await run(process.stdin, process.stdout);
 }
-/* v8 ignore stop */

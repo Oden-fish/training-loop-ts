@@ -1,6 +1,42 @@
 import { describe, expect, it } from "vitest";
-import { PassThrough } from "node:stream";
+import { PassThrough, Writable } from "node:stream";
 import { run } from "../src/cli";
+
+/**
+ * 書き込み完了を次のイベントループまで遅らせる出力先。
+ * highWaterMark が 1 なので、書き込み中に次の write() が来ると false を返し、
+ * バックプレッシャーの経路（drain 待ち）が実際に通る。
+ */
+class SlowSink extends Writable {
+  private readonly chunks: string[] = [];
+  /** _write が呼ばれた時点で内部バッファに残っていたバイト数の最大値 */
+  maxQueuedBytes = 0;
+  drainCount = 0;
+
+  constructor() {
+    super({ highWaterMark: 1 });
+    this.on("drain", () => {
+      this.drainCount += 1;
+    });
+  }
+
+  _write(
+    chunk: Buffer,
+    _encoding: BufferEncoding,
+    callback: (error?: Error | null) => void,
+  ): void {
+    this.chunks.push(chunk.toString());
+    this.maxQueuedBytes = Math.max(this.maxQueuedBytes, this.writableLength);
+    setImmediate(callback);
+  }
+
+  get text(): string {
+    return this.chunks.join("");
+  }
+}
+
+/** 1行は最長 "line-49\n" の 8 バイト。数行分を上限にしておけば「溜め込んでいない」と言える。 */
+const MAX_QUEUED_BYTES = 32;
 
 function collect(stream: PassThrough): Promise<string> {
   return new Promise((resolve) => {
@@ -80,16 +116,16 @@ describe("run", () => {
     expect(await errorText).toContain("Cannot generate slug");
   });
 
-  it("出力バッファが埋まっても全行を取りこぼさない", async () => {
+  it("出力が詰まっているときは書き込みを待ち、バッファを積み上げない", async () => {
     const lines = Array.from({ length: 50 }, (_, i) => `Line ${i}`);
-    const input = feed(lines);
-    // highWaterMark を小さくして write() に false を返させ、drain 待ちの経路を通す
-    const output = new PassThrough({ highWaterMark: 1 });
-    const outputText = collect(output);
+    const sink = new SlowSink();
 
-    await run(input, output);
-    output.end();
+    await run(feed(lines), sink);
 
-    expect(await outputText).toBe(lines.map((_, i) => `line-${i}\n`).join(""));
+    expect(sink.text).toBe(lines.map((_, i) => `line-${i}\n`).join(""));
+    // drain を待たずに書き続けると、未処理の行がすべて内部バッファに積み上がる。
+    // 待っていれば、内部に残るのは書き込み中の1行だけになる。
+    expect(sink.drainCount).toBeGreaterThan(0);
+    expect(sink.maxQueuedBytes).toBeLessThan(MAX_QUEUED_BYTES);
   });
 });
