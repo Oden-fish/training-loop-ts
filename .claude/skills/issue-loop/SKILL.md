@@ -16,8 +16,28 @@ disallowed-tools:
   - AskUserQuestion
 ---
 
-Issue **$ARGUMENTS** を片付けます。番号が空なら、`agent:ready` ラベルが付いた open Issue のうち
-最も古いものを対象にしてください。
+Issue **$ARGUMENTS** を片付けます。番号が空なら、対象は自分で選ばず
+`./scripts/select-next-issue.sh` に選ばせてください。
+
+```bash
+./scripts/select-next-issue.sh   # 番号を1つ出力。終了コード 3 = キューが空 / 4 = 全件が前提待ち
+```
+
+無人ループ（`scripts/run-loop.sh`）と同じ規則をこのスクリプトが持っています。手で番号なしの
+`/issue-loop` を叩いたときに判定がズレないよう、**自分で `gh issue list` を並べ替えて選ばないこと。**
+規則は次のとおりです。
+
+1. `agent:wip` が残っていれば、その中で最も番号が小さいものを再開する（依存は見ない）
+2. なければ `agent:ready` のうち、**未クローズの前提 Issue（blocked by）を持たない**、
+   最も番号が小さいもの
+3. 終了コード 3（キューが空）または 4（候補はあるが全件が前提待ち）なら、着手せずに終了する
+
+番号を明示的に渡された場合も、その Issue に未クローズの前提が無いかだけは確認してください。
+残っていれば着手せず、「7. 詰まったとき」の手順で `agent:blocked` にします。
+
+```bash
+gh api "repos/:owner/:repo/issues/<N>/dependencies/blocked_by" --jq '[.[] | select(.state != "closed") | .number]'
+```
 
 > このスキルは無人で回ることを前提にしています。**人間に質問しないでください。**
 > 判断できない状況になったら「7. 詰まったとき」の手順で `agent:blocked` にして終了します。
@@ -65,6 +85,13 @@ git switch -c feat/issue-<N>-<短いslug>
 - コミットは意味のある単位で小さく。メッセージは `type(scope): 要約` + 本文に「なぜ」。
 - **Issue のスコープ外を触らない。** 気づいた別の問題は、直さずに新しい Issue を立てる:
   `gh issue create --title "..." --body "..." --label "agent:ready"`
+  立てた Issue が**この Issue の完了を前提にする**なら、依存を張っておく（張らないと、
+  ループが前提の揃っていない Issue を拾ってしまう）:
+
+  ```bash
+  gh api --method POST "repos/:owner/:repo/issues/<新Issue番号>/dependencies/blocked_by" \
+    -F issue_id="$(gh api repos/:owner/:repo/issues/<N> --jq '.id')"
+  ```
 
 ## 5. ローカル検証
 

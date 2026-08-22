@@ -13,8 +13,18 @@ if [[ "$MODE" == "--fix" ]]; then
   MODE=""
 fi
 
+# scripts/*.sh のテスト。gh をスタブに差し替えて動くので、ネットワークも認証も要らない。
+run_shell_tests() {
+  local t
+  for t in scripts/tests/*.test.sh; do
+    [[ -e "$t" ]] || return 0
+    bash "$t"
+  done
+}
+
 if [[ "$MODE" == "--fast" ]]; then
   npx vitest run
+  echo "==> shell tests" && run_shell_tests
   echo "OK"
   exit 0
 fi
@@ -23,4 +33,5 @@ echo "==> format"    && npx prettier --check "src/**/*.ts" "tests/**/*.ts"
 echo "==> typecheck" && npx tsc --noEmit
 # カバレッジ下限は vitest.config.ts の thresholds が判定する
 echo "==> test"      && npx vitest run --coverage
+echo "==> shell tests" && run_shell_tests
 echo "OK"
