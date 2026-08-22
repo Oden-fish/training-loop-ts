@@ -1,6 +1,27 @@
 /** 文字列ユーティリティ。練習用 Issue はここに機能を足していく。 */
 
 /**
+ * コレクションをキー関数でグループ化する。
+ * 各グループ内の要素は元の順序を保つ。
+ */
+export function groupBy<T>(
+  items: readonly T[],
+  keyFn: (item: T) => string,
+): Record<string, T[]> {
+  const result: Record<string, T[]> = {};
+  for (const item of items) {
+    const key = keyFn(item);
+    const group = result[key];
+    if (group) {
+      group.push(item);
+    } else {
+      result[key] = [item];
+    }
+  }
+  return result;
+}
+
+/**
  * 文字列を URL に使える slug に変換する。
  * 非 ASCII 文字は空白と同じ扱い（除去）。ASCII 部分が残らない場合はエラーを投げる。
  * @throws {Error} 入力から有効な slug を生成できない場合
