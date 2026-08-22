@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "slugify": "node --experimental-strip-types src/cli.ts",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
@@ -11,6 +12,7 @@
     "verify": "./scripts/verify.sh"
   },
   "devDependencies": {
+    "@types/node": "^22.20.1",
     "@vitest/coverage-v8": "^4.1.0",
     "prettier": "^3.3.3",
     "typescript": "^5.6.3",
