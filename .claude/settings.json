@@ -56,7 +56,11 @@
       "Bash(dart *)",
       "Bash(coverage *)",
       "Bash(./scripts/verify.sh --fast)",
-      "Bash(./scripts/verify.sh --fix)"
+      "Bash(./scripts/verify.sh --fix)",
+      "Write(.claude/tmp/**)",
+      "Edit(.claude/tmp/**)",
+      "Write(.claude/agent-memory/**)",
+      "Edit(.claude/agent-memory/**)"
     ],
     "ask": [
       "Bash(gh pr merge *)",
