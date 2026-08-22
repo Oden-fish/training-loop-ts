@@ -21,15 +21,22 @@ gh auth status >/dev/null 2>&1 || { echo "gh auth login を実行してくださ
 # 前提: 作業ツリーが clean で、既定ブランチが緑であること
 [[ -z "$(git status --porcelain)" ]] || { echo "作業ツリーに未コミットの変更があります" >&2; exit 1; }
 
+SELECT="$(dirname "$0")/select-next-issue.sh"
+
 count=0
 while (( count < MAX_ISSUES )); do
-  # 作業中の残骸があれば、それを先に片付ける
-  N="$(gh issue list --label 'agent:wip' --state open --limit 1 --json number --jq '.[0].number // empty')"
-  if [[ -z "$N" ]]; then
-    N="$(gh issue list --label 'agent:ready' --state open --limit 1 \
-          --json number --jq 'sort_by(.number) | .[0].number // empty')"
-  fi
-  [[ -z "$N" ]] && { echo "キューは空です。終了します。"; break; }
+  # どの Issue に着手するかの規則は select-next-issue.sh が持つ（そちらにテストがある）
+  set +e
+  N="$(bash "$SELECT")"
+  pick_rc=$?
+  set -e
+  case $pick_rc in
+    0) ;;
+    10) echo "キューは空です。終了します。"; break ;;
+    11) echo "着手できる Issue がありません（候補はすべて前提 Issue の完了待ちです）。終了します。"; break ;;
+    *) echo "Issue の選択に失敗しました (exit $pick_rc)。gh の認証やレートリミットを確認してください。" >&2
+       exit $pick_rc ;;
+  esac
 
   count=$((count+1))
   TS="$(date -u +%Y%m%dT%H%M%SZ)"
