@@ -8,6 +8,7 @@ __pycache__/
 # Claude Code
 .claude/tmp/*
 !.claude/tmp/.gitkeep
+.claude/agent-memory/
 .claude/loop.log
 .claude/settings.local.json
 
