@@ -2,6 +2,10 @@
 
 Claude Code を用いた Loop Engineering の練習を行うためのリポジトリ（自分用）
 
+## CLI
+
+- 標準入力の各行を slug にして標準出力に返す: `cat titles.txt | npm run --silent slugify`
+
 ## 使い方メモ
 
 - `.github/workflows/ci.yml` をリポジトリに入れておくと、自動で GH Actions が走る
