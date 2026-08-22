@@ -32,9 +32,10 @@ while (( count < MAX_ISSUES )); do
   set -e
   case $pick_rc in
     0) ;;
-    3) echo "キューは空です。終了します。"; break ;;
-    4) echo "着手できる Issue がありません（候補はすべて前提 Issue の完了待ちです）。終了します。"; break ;;
-    *) echo "Issue の選択に失敗しました (exit $pick_rc)。" >&2; exit $pick_rc ;;
+    10) echo "キューは空です。終了します。"; break ;;
+    11) echo "着手できる Issue がありません（候補はすべて前提 Issue の完了待ちです）。終了します。"; break ;;
+    *) echo "Issue の選択に失敗しました (exit $pick_rc)。gh の認証やレートリミットを確認してください。" >&2
+       exit $pick_rc ;;
   esac
 
   count=$((count+1))

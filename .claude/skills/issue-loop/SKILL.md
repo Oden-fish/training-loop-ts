@@ -1,6 +1,6 @@
 ---
 name: issue-loop
-description: GitHub Issue を1件、着手からPR作成（Phase 2 以降はマージ・クローズまで）まで一気に片付ける。ループの本体。番号を省略すると agent:ready の先頭を自動で拾う。
+description: GitHub Issue を1件、着手からPR作成（Phase 2 以降はマージ・クローズまで）まで一気に片付ける。ループの本体。番号を省略すると、scripts/select-next-issue.sh が対象を選ぶ（agent:wip 優先、次に前提 Issue が片付いている agent:ready のうち最も番号が小さいもの）。
 argument-hint: "[issue番号]"
 allowed-tools:
   - Read
@@ -20,7 +20,7 @@ Issue **$ARGUMENTS** を片付けます。番号が空なら、対象は自分�
 `./scripts/select-next-issue.sh` に選ばせてください。
 
 ```bash
-./scripts/select-next-issue.sh   # 番号を1つ出力。終了コード 3 = キューが空 / 4 = 全件が前提待ち
+./scripts/select-next-issue.sh   # 番号を1つ出力。終了コード 10 = キューが空 / 11 = 全件が前提待ち
 ```
 
 無人ループ（`scripts/run-loop.sh`）と同じ規則をこのスクリプトが持っています。手で番号なしの
@@ -30,10 +30,16 @@ Issue **$ARGUMENTS** を片付けます。番号が空なら、対象は自分�
 1. `agent:wip` が残っていれば、その中で最も番号が小さいものを再開する（依存は見ない）
 2. なければ `agent:ready` のうち、**未クローズの前提 Issue（blocked by）を持たない**、
    最も番号が小さいもの
-3. 終了コード 3（キューが空）または 4（候補はあるが全件が前提待ち）なら、着手せずに終了する
+3. 終了コード 10（キューが空）または 11（候補はあるが全件が前提待ち）なら、着手せずに終了する
+4. それ以外の終了コードは `gh` 側の失敗（認証切れ・レートリミット等）。着手せずに終了する
 
-番号を明示的に渡された場合も、その Issue に未クローズの前提が無いかだけは確認してください。
-残っていれば着手せず、「7. 詰まったとき」の手順で `agent:blocked` にします。
+番号を明示的に渡された場合、その Issue が**まだ `agent:wip` でないときに限り**、
+未クローズの前提が無いかを確認してください。残っていれば着手せず、「7. 詰まったとき」の手順で
+`agent:blocked` にします。
+
+**すでに `agent:wip` の Issue を再開するときは、この確認をしないこと。**
+着手済みのものを前提待ちで止め直しても、中途半端な状態が残るだけで誰の得にもなりません
+（`run-loop.sh` は常に番号を渡してくるので、ここを間違えると wip の再開が毎回 blocked になります）。
 
 ```bash
 gh api "repos/:owner/:repo/issues/<N>/dependencies/blocked_by" --jq '[.[] | select(.state != "closed") | .number]'

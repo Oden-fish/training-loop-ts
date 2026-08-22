@@ -70,6 +70,8 @@ run_target() {
 
 # --- テスト ---------------------------------------------------------------
 
+# スタブは本物と同じく新しい順（番号の降順）に返し、--limit も API 側で先に効かせる。
+# なので「--limit で絞ってから sort する」実装（元のバグ）だとここで最新の 5 が返り、落ちる。
 setup "agent:ready のうち番号が最も小さいものを選ぶ"
 with_label ready 5 3 4
 run_target
@@ -116,7 +118,7 @@ teardown
 
 setup "候補が1件も無ければ、何も出力せずキューが空を示す終了コードを返す"
 run_target
-assert_eq "" "$STDOUT" "標準出力" && assert_eq "3" "$RC" "終了コード" && ok
+assert_eq "" "$STDOUT" "標準出力" && assert_eq "10" "$RC" "終了コード" && ok
 teardown
 
 setup "候補が全部前提待ちなら、キューが空とは別の終了コードを返す"
@@ -124,7 +126,7 @@ with_label ready 3 4
 blocked_by 3 "2:open"
 blocked_by 4 "2:open"
 run_target
-assert_eq "" "$STDOUT" "標準出力" && assert_eq "4" "$RC" "終了コード" && ok
+assert_eq "" "$STDOUT" "標準出力" && assert_eq "11" "$RC" "終了コード" && ok
 teardown
 
 setup "依存 API が使えない環境では、依存なしとみなして番号順で選ぶ"
@@ -132,7 +134,30 @@ with_label ready 3 4
 blocked_by 3 "2:open"
 GH_STUB_FAIL_API=1 run_target
 unset GH_STUB_FAIL_API
-assert_eq "3" "$STDOUT" "選ばれた Issue" && assert_eq "0" "$RC" "終了コード" && ok
+assert_eq "3" "$STDOUT" "選ばれた Issue" &&
+  assert_eq "0" "$RC" "終了コード" &&
+  assert_contains "依存を確認できませんでした" "$STDERR" "確認できなかった旨の通知" &&
+  ok
+teardown
+
+# gh は認証切れやレートリミットで 4 を返す。自前の終了コードがそれと衝突していると、
+# ループが「全件が前提待ち」と誤読して静かに正常終了してしまう。
+setup "gh 自体が失敗したときは、キューが空とも前提待ちとも違う終了コードで落ちる"
+with_label ready 3 4
+GH_STUB_FAIL_LIST=4 run_target
+unset GH_STUB_FAIL_LIST
+assert_eq "" "$STDOUT" "標準出力" &&
+  { [[ "$RC" != "10" && "$RC" != "11" && "$RC" != "0" ]] || ng "終了コード: 10/11/0 以外のはずが '$RC'"; } &&
+  assert_contains "gh issue list に失敗" "$STDERR" "失敗の通知" &&
+  ok
+teardown
+
+setup "改行に CR が混ざる環境でも、前提の有無を正しく判定する"
+with_label ready 3 4
+blocked_by 3 "2:open"
+GH_STUB_CRLF=1 run_target
+unset GH_STUB_CRLF
+assert_eq "4" "$STDOUT" "選ばれた Issue" && assert_eq "0" "$RC" "終了コード" && ok
 teardown
 
 # --- 結果 -----------------------------------------------------------------
