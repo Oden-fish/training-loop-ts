@@ -8,6 +8,15 @@ describe("slugify", () => {
   it("前後のハイフンを落とす", () => {
     expect(slugify("  --Hello--  ")).toBe("hello");
   });
+  it("非 ASCII のみの入力でエラーを投げる", () => {
+    expect(() => slugify("日本語のタイトル")).toThrow(Error);
+  });
+  it("非 ASCII 混在で ASCII 部分が残ればそれを返す", () => {
+    expect(slugify("hello世界")).toBe("hello");
+  });
+  it("非 ASCII 混在でも ASCII 部分が空ならエラーを投げる", () => {
+    expect(() => slugify("日本語！＃")).toThrow(Error);
+  });
 });
 
 describe("truncate", () => {

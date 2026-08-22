@@ -1,12 +1,22 @@
 /** 文字列ユーティリティ。練習用 Issue はここに機能を足していく。 */
 
-/** 文字列を URL に使える slug に変換する。 */
+/**
+ * 文字列を URL に使える slug に変換する。
+ * 非 ASCII 文字は空白と同じ扱い（除去）。ASCII 部分が残らない場合はエラーを投げる。
+ * @throws {Error} 入力から有効な slug を生成できない場合
+ */
 export function slugify(input: string): string {
-  return input
+  const slug = input
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+  if (slug === "" && input.trim() !== "") {
+    throw new Error(
+      "Cannot generate slug: input contains no ASCII alphanumeric characters",
+    );
+  }
+  return slug;
 }
 
 /**
